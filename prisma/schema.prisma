@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - both buyers and vendors
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  image         String?
+  role          UserRole  @default(BUYER) // BUYER or VENDOR
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Vendor-specific fields
+  vendorProfile VendorProfile?
+  vendorItems   FoodItem[]
+
+  // Buyer-specific
+  cart          Cart?
+  orders        Order[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  BUYER
+  VENDOR
+}
+
+// Vendor Profile
+model VendorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName     String
+  description   String?
+  image         String?
+  rating        Float    @default(5.0)
+  totalSales    Int      @default(0)
+  earnings      Float    @default(0.0)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("vendor_profiles")
+}
+
+// Food Category
+model Category {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  slug      String      @unique
+  image     String?
+  items     FoodItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("categories")
+}
+
+// Food Item/Product
+model FoodItem {
+  id            String      @id @default(cuid())
+  name          String
+  description   String
+  price         Float
+  image         String
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  vendorId      String
+  vendor        User        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  stock         Int
+  rating        Float       @default(5.0)
+  reviews       Review[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("food_items")
+}
+
+// Shopping Cart
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("carts")
+}
+
+// Cart Items
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      FoodItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  quantity  Int
+  price     Float    // Price at time of adding to cart
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, itemId])
+  @@map("cart_items")
+}
+
+// Order
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
+  totalPrice    Float
+  status        OrderStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(UNPAID)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+// Order Items
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      FoodItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  quantity  Int
+  price     Float    // Price at time of purchase
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("order_items")
+}
+
+// Reviews
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      FoodItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  rating    Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, itemId])
+  @@map("reviews")
+}
+
+// Payment/Vendor Payout
+model Payout {
+  id            String   @id @default(cuid())
+  vendorId      String
+  amount        Float
+  status        PayoutStatus @default(PENDING)
+  orderId       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("payouts")
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  CANCELLED
+}
