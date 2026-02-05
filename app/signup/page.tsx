@@ -74,197 +74,189 @@ export default function SignupPage() {
           <Link href="/" className="inline-flex items-center justify-center gap-2 mb-6">
             <Leaf className="h-10 w-10 text-primary" />
             <span className="text-3xl font-bold text-primary">FreshMarket</span>
-          <Card className="border border-secondary shadow-sm">
-            <CardContent className="pt-6">
-              {isCheckingAuth ? (
-                <div className="space-y-3 text-center">
-                  <div className="h-8 w-8 mx-auto rounded-full bg-secondary animate-pulse" />
-                  <p className="text-sm text-muted-foreground">Checking your account…</p>
+          </Link>
+        </div>
+        <Card className="border border-secondary shadow-sm">
+          <CardContent className="pt-6">
+            {isCheckingAuth ? (
+              <div className="space-y-3 text-center">
+                <div className="h-8 w-8 mx-auto rounded-full bg-secondary animate-pulse" />
+                <p className="text-sm text-muted-foreground">Checking your account…</p>
+              </div>
+            ) : currentUser ? (
+              <div className="space-y-5">
+                <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                  <p className="text-sm font-semibold text-foreground">You’re already signed in</p>
+                  <p className="text-xs text-muted-foreground">
+                    Signed in as {currentUser.name || currentUser.email}
+                  </p>
                 </div>
-              ) : currentUser ? (
-                <div className="space-y-5">
-                  <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-                    <p className="text-sm font-semibold text-foreground">You’re already signed in</p>
-                    <p className="text-xs text-muted-foreground">
-                      Signed in as {currentUser.name || currentUser.email}
-                    </p>
-                  </div>
-                  <div className="grid gap-3">
-                    <Link href="/" className="block">
-                      <Button className="w-full">Go to homepage</Button>
-                    </Link>
-                    <Link href="/shop" className="block">
-                      <Button variant="outline" className="w-full">
-                        Browse the shop
-                      </Button>
-                    </Link>
-                    <Link href="/account" className="block">
-                      <Button variant="outline" className="w-full">
-                        View account
-                      </Button>
-                    </Link>
-                    {currentUser.role === 'VENDOR' && (
-                      <Link href="/vendor/dashboard" className="block">
-                        <Button variant="outline" className="w-full">
-                          Vendor dashboard
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* User Type Selection */}
-                  <div className="mb-6 grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setUserType('buyer')}
-                      className={`rounded-lg border-2 p-4 text-center font-semibold transition-all ${
-                        userType === 'buyer'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-input bg-background text-muted-foreground hover:border-primary/50'
-                      }`}
-                    >
-                      <p className="font-bold">Shop</p>
-                      <p className="text-xs font-normal">Buy food</p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUserType('vendor')}
-                      className={`rounded-lg border-2 p-4 text-center font-semibold transition-all ${
-                        userType === 'vendor'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-input bg-background text-muted-foreground hover:border-primary/50'
-                      }`}
-                    >
-                      <p className="font-bold">Sell</p>
-                      <p className="text-xs font-normal">Start shop</p>
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    {error && (
-                      <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                        <p className="font-medium">{error}</p>
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <label htmlFor="fullName" className="text-sm font-semibold text-foreground">
-                        Full Name
-                      </label>
-                      <Input
-                        id="fullName"
-                        name="fullName"
-                        type="text"
-                        placeholder="John Doe"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        required
-                        className="h-10"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="text-sm font-semibold text-foreground">
-                        Email Address
-                      </label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        className="h-10"
-                      />
-                    </div>
-
-                    {userType === 'vendor' && (
-                      <div className="space-y-2">
-                        <label htmlFor="storeName" className="text-sm font-semibold text-foreground">
-                          Store Name
-                        </label>
-                        <Input
-                          id="storeName"
-                          name="storeName"
-                          type="text"
-                          placeholder="My Fresh Produce"
-                          value={formData.storeName}
-                          onChange={handleChange}
-                          required
-                          className="h-10"
-                        />
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <label htmlFor="password" className="text-sm font-semibold text-foreground">
-                        Password
-                      </label>
-                      <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        className="h-10"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="confirmPassword" className="text-sm font-semibold text-foreground">
-                        Confirm Password
-                      </label>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        required
-                        className="h-10"
-                      />
-                    </div>
-
-                    <div className="flex items-start gap-2 pt-2">
-                      <input type="checkbox" id="terms" className="mt-1 rounded" required />
-                      <label htmlFor="terms" className="text-xs text-muted-foreground">
-                        I agree to the{' '}
-                        <Link href="#" className="text-primary hover:underline">
-                          Terms of Service
-                        </Link>{' '}
-                        and{' '}
-                        <Link href="#" className="text-primary hover:underline">
-                          Privacy Policy
-                        </Link>
-                      </label>
-                    </div>
-
-                    <Button type="submit" disabled={isLoading} className="w-full h-10 font-semibold text-base">
-                      {isLoading ? 'Creating account...' : 'Create Account'}
+                <div className="grid gap-3">
+                  <Link href="/" className="block">
+                    <Button className="w-full">Go to homepage</Button>
+                  </Link>
+                  <Link href="/shop" className="block">
+                    <Button variant="outline" className="w-full">
+                      Browse the shop
                     </Button>
-                  </form>
-
-                  <div className="mt-6 space-y-1 text-center text-sm text-muted-foreground">
-                    <p>Already have an account?</p>
-                    <Link href="/login" className="text-primary font-semibold hover:underline block">
-                      Sign in
+                  </Link>
+                  <Link href="/account" className="block">
+                    <Button variant="outline" className="w-full">
+                      View account
+                    </Button>
+                  </Link>
+                  {currentUser.role === 'VENDOR' && (
+                    <Link href="/vendor/dashboard" className="block">
+                      <Button variant="outline" className="w-full">
+                        Vendor dashboard
+                      </Button>
                     </Link>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* User Type Selection */}
+                <div className="mb-6 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setUserType('buyer')}
+                    className={`rounded-lg border-2 p-4 text-center font-semibold transition-all ${userType === 'buyer'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-input bg-background text-muted-foreground hover:border-primary/50'
+                      }`}
+                  >
+                    <p className="font-bold">Shop</p>
+                    <p className="text-xs font-normal">Buy food</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserType('vendor')}
+                    className={`rounded-lg border-2 p-4 text-center font-semibold transition-all ${userType === 'vendor'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-input bg-background text-muted-foreground hover:border-primary/50'
+                      }`}
+                  >
+                    <p className="font-bold">Sell</p>
+                    <p className="text-xs font-normal">Start shop</p>
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      <p className="font-medium">{error}</p>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label htmlFor="fullName" className="text-sm font-semibold text-foreground">
+                      Full Name
+                    </label>
+                    <Input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      placeholder="John Doe"
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      required
+                      className="h-10"
+                    />
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              <p>Already have an account?</p>
-              <Link href="/login" className="text-primary font-semibold hover:underline block">
-                Sign in
-              </Link>
-            </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-semibold text-foreground">
+                      Email Address
+                    </label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="h-10"
+                    />
+                  </div>
+
+                  {userType === 'vendor' && (
+                    <div className="space-y-2">
+                      <label htmlFor="storeName" className="text-sm font-semibold text-foreground">
+                        Store Name
+                      </label>
+                      <Input
+                        id="storeName"
+                        name="storeName"
+                        type="text"
+                        placeholder="My Fresh Produce"
+                        value={formData.storeName}
+                        onChange={handleChange}
+                        required
+                        className="h-10"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="text-sm font-semibold text-foreground">
+                      Password
+                    </label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      className="h-10"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="confirmPassword" className="text-sm font-semibold text-foreground">
+                      Confirm Password
+                    </label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                      className="h-10"
+                    />
+                  </div>
+
+                  <div className="flex items-start gap-2 pt-2">
+                    <input type="checkbox" id="terms" className="mt-1 rounded" required />
+                    <label htmlFor="terms" className="text-xs text-muted-foreground">
+                      I agree to the{' '}
+                      <Link href="#" className="text-primary hover:underline">
+                        Terms of Service
+                      </Link>{' '}
+                      and{' '}
+                      <Link href="#" className="text-primary hover:underline">
+                        Privacy Policy
+                      </Link>
+                    </label>
+                  </div>
+
+                  <Button type="submit" disabled={isLoading} className="w-full h-10 font-semibold text-base">
+                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+                </form>
+
+                <div className="mt-6 space-y-1 text-center text-sm text-muted-foreground">
+                  <p>Already have an account?</p>
+                  <Link href="/login" className="text-primary font-semibold hover:underline block">
+                    Sign in
+                  </Link>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
