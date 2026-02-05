@@ -1,20 +1,44 @@
 'use client'
 
-import React from "react"
-
-import { useState } from 'react'
-import { ArrowLeft, Loader2 } from 'lucide-react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Loader } from 'lucide-react'
 import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
-import { Separator } from '@/components/ui/separator'
 
 export default function CheckoutPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to cart as checkout is now modal-based
+    router.push('/cart')
+  }, [router])
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
+        <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
+          <MainNav />
+          <UserNav />
+        </div>
+      </header>
+
+      <main className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Redirecting to cart...</p>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+/*
+OLD CHECKOUT PAGE CODE - KEPT FOR REFERENCE
+export default function CheckoutPageOld() {
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
+  const [orderNumber, setOrderNumber] = useState<string | null>(null)
 
   const cartItems = [
     {
@@ -43,9 +67,10 @@ export default function CheckoutPage() {
     setIsLoading(true)
     // Simulate payment processing
     setTimeout(() => {
+      const generated = `FM-${Math.floor(100000 + Math.random() * 900000)}`
+      setOrderNumber(generated)
       setIsLoading(false)
-      // In a real app, you'd process payment here
-      alert('Order placed successfully!')
+      setStep(4)
     }, 2000)
   }
 
@@ -71,7 +96,7 @@ export default function CheckoutPage() {
             {/* Main Form */}
             <div className="lg:col-span-2">
               {/* Steps Indicator */}
-              <div className="mb-8 flex gap-4">
+              <div className="mb-8 flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold ${
@@ -113,6 +138,21 @@ export default function CheckoutPage() {
                     3
                   </div>
                   <span className="hidden sm:inline text-sm font-medium">Review</span>
+                </div>
+                <div className="flex flex-1 items-center gap-2">
+                  <div className="flex-1 h-1 bg-secondary" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold ${
+                      step >= 4
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-foreground'
+                    }`}
+                  >
+                    4
+                  </div>
+                  <span className="hidden sm:inline text-sm font-medium">Done</span>
                 </div>
               </div>
 
@@ -272,6 +312,57 @@ export default function CheckoutPage() {
                           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           {isLoading ? 'Processing...' : 'Place Order'}
                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {step === 4 && (
+                  <Card className="border-secondary">
+                    <CardHeader>
+                      <h2 className="text-xl font-semibold">Order Confirmed</h2>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <p className="text-sm font-semibold text-foreground">Thanks for your order!</p>
+                        <p className="text-sm text-muted-foreground">
+                          Your order number is{' '}
+                          <span className="font-semibold text-foreground">{orderNumber}</span>.
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Estimated delivery: 2-3 business days.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>${subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Tax</span>
+                          <span>${tax.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Shipping</span>
+                          <span>{shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Total paid</span>
+                        <span className="text-primary">${total.toFixed(2)}</span>
+                      </div>
+
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <Link href="/orders" className="flex-1">
+                          <Button className="w-full">View orders</Button>
+                        </Link>
+                        <Link href="/shop" className="flex-1">
+                          <Button variant="outline" className="w-full">
+                            Continue shopping
+                          </Button>
+                        </Link>
                       </div>
                     </CardContent>
                   </Card>

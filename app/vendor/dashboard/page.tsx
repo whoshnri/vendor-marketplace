@@ -1,6 +1,7 @@
 'use client'
 
-import { TrendingUp, Package, DollarSign, Users, Plus, MoreHorizontal } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { TrendingUp, Package, DollarSign, Users, Plus, MoreHorizontal, Loader } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -9,103 +10,97 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
 import { Separator } from '@/components/ui/separator'
+import { SiteFooter } from '@/components/site-footer'
+import { getVendorDashboardData } from '@/app/actions/vendors'
 
 export default function VendorDashboard() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const dashboardData = await getVendorDashboardData()
+        setData(dashboardData)
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
+          <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
+            <MainNav />
+            <UserNav />
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <Loader className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
+          <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
+            <MainNav />
+            <UserNav />
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Failed to load dashboard data. Please make sure you are logged in as a vendor.</p>
+        </main>
+      </div>
+    )
+  }
+
+  const { vendorProfile, stats: rawStats, recentOrders, topProducts, inventory } = data
+
   const stats = [
     {
       label: 'Total Sales',
-      value: '$12,456.50',
-      change: '+12.5%',
+      value: `${rawStats.totalSales}`,
+      change: '--',
+      icon: DollarSign,
+    },
+    {
+      label: 'Total Earnings',
+      value: `$${rawStats.earnings.toFixed(2)}`,
+      change: '--',
       icon: DollarSign,
     },
     {
       label: 'Active Products',
-      value: '34',
-      change: '+2',
+      value: `${rawStats.activeProducts}`,
+      change: '--',
       icon: Package,
     },
     {
-      label: 'Orders This Month',
-      value: '128',
-      change: '+18%',
+      label: 'Recent Activity',
+      value: `${rawStats.ordersThisMonth}`,
+      change: '--',
       icon: TrendingUp,
-    },
-    {
-      label: 'Followers',
-      value: '1,234',
-      change: '+45',
-      icon: Users,
-    },
-  ]
-
-  const recentOrders = [
-    {
-      id: 'ORD-2024-001',
-      customer: 'Alice Johnson',
-      items: 'Organic Tomatoes x2',
-      amount: '$11.98',
-      status: 'Pending',
-      date: 'Dec 19, 2024',
-    },
-    {
-      id: 'ORD-2024-002',
-      customer: 'Bob Smith',
-      items: 'Mixed Greens x1',
-      amount: '$3.49',
-      status: 'Processing',
-      date: 'Dec 18, 2024',
-    },
-    {
-      id: 'ORD-2024-003',
-      customer: 'Carol Davis',
-      items: 'Greek Yogurt x3',
-      amount: '$14.97',
-      status: 'Shipped',
-      date: 'Dec 17, 2024',
-    },
-    {
-      id: 'ORD-2024-004',
-      customer: 'David Wilson',
-      items: 'Sourdough Bread x1',
-      amount: '$7.99',
-      status: 'Delivered',
-      date: 'Dec 16, 2024',
-    },
-  ]
-
-  const topProducts = [
-    {
-      id: '1',
-      name: 'Organic Heirloom Tomatoes',
-      sales: 234,
-      revenue: '$1,401.66',
-      rating: 4.8,
-    },
-    {
-      id: '2',
-      name: 'Mixed Greens',
-      sales: 189,
-      revenue: '$659.61',
-      rating: 4.6,
-    },
-    {
-      id: '3',
-      name: 'Greek Yogurt',
-      sales: 156,
-      revenue: '$778.44',
-      rating: 4.8,
     },
   ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Pending':
+      case 'PENDING':
         return 'bg-yellow-100 text-yellow-800'
-      case 'Processing':
+      case 'CONFIRMED':
         return 'bg-blue-100 text-blue-800'
-      case 'Shipped':
+      case 'SHIPPED':
         return 'bg-purple-100 text-purple-800'
-      case 'Delivered':
+      case 'DELIVERED':
         return 'bg-green-100 text-green-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -126,7 +121,7 @@ export default function VendorDashboard() {
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Vendor Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, Green Valley Farm</p>
+              <p className="text-muted-foreground">Welcome back, {vendorProfile.storeName}</p>
             </div>
             <Link href="/vendor/products/new">
               <Button className="gap-2">
@@ -181,7 +176,7 @@ export default function VendorDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentOrders.map((order) => (
+                    {recentOrders.map((order: any) => (
                       <div key={order.id} className="flex items-center justify-between rounded-lg border border-secondary p-4">
                         <div className="flex-1">
                           <p className="font-semibold text-foreground">{order.id}</p>
@@ -189,7 +184,7 @@ export default function VendorDashboard() {
                           <p className="text-xs text-muted-foreground mt-1">{order.items}</p>
                         </div>
                         <div className="text-right space-y-2">
-                          <p className="font-semibold text-primary">{order.amount}</p>
+                          <p className="font-semibold text-primary">${order.amount.toFixed(2)}</p>
                           <Badge className={getStatusColor(order.status)} variant="outline">
                             {order.status}
                           </Badge>
@@ -213,7 +208,7 @@ export default function VendorDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {topProducts.map((product) => (
+                    {topProducts.map((product: any) => (
                       <div key={product.id} className="flex items-center justify-between border-b border-secondary pb-4 last:border-0">
                         <div className="flex-1">
                           <p className="font-semibold text-foreground">{product.name}</p>
@@ -222,7 +217,7 @@ export default function VendorDashboard() {
                             <span>Rating: {product.rating}</span>
                           </div>
                         </div>
-                        <p className="text-lg font-bold text-primary">{product.revenue}</p>
+                        <p className="text-lg font-bold text-primary">${product.revenue.toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
@@ -238,24 +233,18 @@ export default function VendorDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[
-                      { name: 'Organic Heirloom Tomatoes', stock: 45, threshold: 20, status: 'Good' },
-                      { name: 'Mixed Greens', stock: 12, threshold: 20, status: 'Low' },
-                      { name: 'Greek Yogurt', stock: 41, threshold: 25, status: 'Good' },
-                      { name: 'Sourdough Bread', stock: 8, threshold: 15, status: 'Critical' },
-                    ].map((item, idx) => (
+                    {inventory.map((item: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between border-b border-secondary pb-4 last:border-0">
                         <div className="flex-1">
                           <p className="font-semibold text-foreground">{item.name}</p>
                           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
                             <div
-                              className={`h-full ${
-                                item.status === 'Critical'
-                                  ? 'bg-red-500'
-                                  : item.status === 'Low'
-                                    ? 'bg-yellow-500'
-                                    : 'bg-primary'
-                              }`}
+                              className={`h-full ${item.status === 'Critical'
+                                ? 'bg-red-500'
+                                : item.status === 'Low'
+                                  ? 'bg-yellow-500'
+                                  : 'bg-primary'
+                                }`}
                               style={{ width: `${(item.stock / 50) * 100}%` }}
                             />
                           </div>
@@ -285,11 +274,7 @@ export default function VendorDashboard() {
         </div>
       </main>
 
-      <footer className="border-t border-secondary bg-secondary/20 py-8">
-        <div className="container px-4 text-center text-sm text-muted-foreground sm:px-8">
-          <p>© 2024 FreshMarket. All rights reserved.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

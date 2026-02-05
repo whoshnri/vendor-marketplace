@@ -4,13 +4,17 @@ import { ArrowRight, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { SiteFooter } from '@/components/site-footer'
+import { useEffect, useState } from 'react'
+import { getCurrentUser } from '@/app/actions/auth'
 
 export default function SellPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const benefits = [
     { title: 'Reach More Customers', description: 'Access thousands of food lovers looking for fresh, local products' },
     { title: 'Easy Setup', description: 'Get your shop up and running in minutes with our simple vendor tools' },
@@ -19,6 +23,15 @@ export default function SellPage() {
     { title: 'Marketing Support', description: 'Leverage our community and promotional tools to grow your sales' },
     { title: 'Analytics Dashboard', description: 'Track your sales, inventory, and customer feedback in real-time' },
   ]
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await getCurrentUser()
+      setCurrentUser(user)
+      setIsCheckingAuth(false)
+    }
+    fetchUser()
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -98,41 +111,88 @@ export default function SellPage() {
             <div className="mx-auto max-w-md">
               <div className="mb-8 text-center">
                 <h2 className="text-2xl font-bold">Ready to Start Selling?</h2>
-                <p className="mt-2 text-muted-foreground">Create your vendor account today</p>
+                <p className="mt-2 text-muted-foreground">Create your vendor account today and start growing your business</p>
               </div>
-
-              <Card className="border-secondary">
+              <Card className="border border-secondary shadow-sm">
                 <CardContent className="space-y-4 pt-6">
-                  <div>
-                    <label className="text-sm font-medium">Full Name</label>
-                    <Input placeholder="Your name" className="mt-2" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Email Address</label>
-                    <Input type="email" placeholder="you@example.com" className="mt-2" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Business Name</label>
-                    <Input placeholder="Your farm/business name" className="mt-2" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Primary Food Category</label>
-                    <select className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
-                      <option>Select a category</option>
-                      <option>Fresh Produce</option>
-                      <option>Dairy & Eggs</option>
-                      <option>Bakery & Grains</option>
-                      <option>Prepared Foods</option>
-                      <option>Meat & Seafood</option>
-                      <option>Beverages</option>
-                    </select>
-                  </div>
-                  <Button className="w-full" size="lg">
-                    Create Vendor Account
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Already have an account? <Link href="/login" className="text-primary hover:underline">Sign in</Link>
-                  </p>
+                  {isCheckingAuth ? (
+                    <div className="space-y-3 text-center">
+                      <div className="h-8 w-8 mx-auto rounded-full bg-secondary animate-pulse" />
+                      <p className="text-sm text-muted-foreground">Checking your account…</p>
+                    </div>
+                  ) : currentUser ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                        <p className="text-sm font-semibold text-foreground">You’re signed in</p>
+                        <p className="text-xs text-muted-foreground">
+                          Signed in as {currentUser.name || currentUser.email}
+                        </p>
+                      </div>
+                      <div className="grid gap-3">
+                        <Link href="/account" className="block">
+                          <Button className="w-full">Go to account</Button>
+                        </Link>
+                        <Link href="/shop" className="block">
+                          <Button variant="outline" className="w-full">
+                            Browse the shop
+                          </Button>
+                        </Link>
+                        {currentUser.role === 'VENDOR' && (
+                          <>
+                            <Link href="/vendor/dashboard" className="block">
+                              <Button variant="outline" className="w-full">
+                                Vendor dashboard
+                              </Button>
+                            </Link>
+                            <Link href="/vendor/products" className="block">
+                              <Button variant="outline" className="w-full">
+                                Manage products
+                              </Button>
+                            </Link>
+                            <Link href="/vendor/payouts" className="block">
+                              <Button variant="outline" className="w-full">
+                                View payouts
+                              </Button>
+                            </Link>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-3 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                        <h3 className="font-semibold text-foreground">What you'll get:</h3>
+                        <ul className="text-sm text-muted-foreground space-y-2">
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                            Unlimited product listings
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                            Sales analytics dashboard
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                            Direct customer access
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                            Weekly payouts
+                          </li>
+                        </ul>
+                      </div>
+                      
+                      <Link href="/signup?role=vendor" className="block">
+                        <Button className="w-full h-10 font-semibold text-base">
+                          Create Vendor Account
+                        </Button>
+                      </Link>
+                      
+                      <p className="text-center text-xs text-muted-foreground">
+                        Already have an account? <Link href="/login" className="text-primary font-semibold hover:underline">Sign in</Link>
+                      </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -160,11 +220,7 @@ export default function SellPage() {
         </section>
       </main>
 
-      <footer className="border-t border-secondary bg-secondary/20 py-8">
-        <div className="container px-4 text-center text-sm text-muted-foreground sm:px-8">
-          <p>© 2024 FreshMarket. All rights reserved.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

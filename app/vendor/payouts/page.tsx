@@ -9,6 +9,7 @@ import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { SiteFooter } from '@/components/site-footer'
 
 export default function VendorPayouts() {
   const payoutStats = [
@@ -206,11 +207,7 @@ export default function VendorPayouts() {
         </div>
       </main>
 
-      <footer className="border-t border-secondary bg-secondary/20 py-8">
-        <div className="container px-4 text-center text-sm text-muted-foreground sm:px-8">
-          <p>© 2024 FreshMarket. All rights reserved.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

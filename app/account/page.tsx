@@ -1,55 +1,178 @@
 'use client'
 
-import { useState } from 'react'
-import { Settings, LogOut, User, MapPin, Phone, Mail } from 'lucide-react'
-import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { Settings, User, LogOut, Loader } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { useToast } from '@/hooks/use-toast'
+import { getCurrentUser, logoutAction } from '@/app/actions/auth'
+import { getUserProfile, updateUserProfile, updateVendorProfile, changePassword } from '@/app/actions/profile'
 
 export default function AccountPage() {
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [userData, setUserData] = useState({
-    fullName: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St',
-    city: 'San Francisco',
-    state: 'CA',
-    zipCode: '94102',
+  const [isSaving, setIsSaving] = useState(false)
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+
+  const [formData, setFormData] = useState({
+    name: '',
+    storeName: '',
+    description: '',
   })
 
-  const recentOrders = [
-    { id: 'FRM-001', date: 'Dec 15, 2024', total: 24.47, status: 'Delivered' },
-    { id: 'FRM-002', date: 'Dec 18, 2024', total: 18.48, status: 'In Transit' },
-    { id: 'FRM-003', date: 'Dec 19, 2024', total: 9.98, status: 'Processing' },
-  ]
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
 
-  const savedAddresses = [
-    {
-      id: 1,
-      label: 'Home',
-      address: '123 Main St',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94102',
-      isDefault: true,
-    },
-    {
-      id: 2,
-      label: 'Work',
-      address: '456 Business Ave',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94105',
-      isDefault: false,
-    },
-  ]
+  useEffect(() => {
+    const loadProfile = async () => {
+      const currentUser = await getCurrentUser()
+      if (!currentUser) {
+        router.push('/login')
+        return
+      }
+
+      setUser(currentUser)
+
+      const result = await getUserProfile()
+      if (result.ok) {
+        setProfile(result.data)
+        setFormData({
+          name: result.data.name,
+          storeName: result.data.vendorProfile?.storeName || '',
+          description: result.data.vendorProfile?.description || '',
+        })
+      } else {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' })
+      }
+      setLoading(false)
+    }
+
+    loadProfile()
+  }, [router, toast])
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true)
+    try {
+      const result = await updateUserProfile({
+        name: formData.name,
+      })
+
+      if (!result.ok) {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' })
+        setIsSaving(false)
+        return
+      }
+
+      if (user.role === 'VENDOR') {
+        const vendorResult = await updateVendorProfile({
+          storeName: formData.storeName,
+          description: formData.description,
+        })
+
+        if (!vendorResult.ok) {
+          toast({ title: 'Error', description: vendorResult.error, variant: 'destructive' })
+          setIsSaving(false)
+          return
+        }
+      }
+
+      toast({ title: 'Success', description: 'Profile updated successfully' })
+      setIsEditing(false)
+
+      // Reload profile
+      const updatedResult = await getUserProfile()
+      if (updatedResult.ok) {
+        setProfile(updatedResult.data)
+        setFormData({
+          name: updatedResult.data.name,
+          storeName: updatedResult.data.vendorProfile?.storeName || '',
+          description: updatedResult.data.vendorProfile?.description || '',
+        })
+      }
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast({ title: 'Error', description: 'All fields are required', variant: 'destructive' })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await changePassword(passwordData)
+      if (!result.ok) {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' })
+      } else {
+        toast({ title: 'Success', description: 'Password changed successfully' })
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+        setShowPasswordForm(false)
+      }
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await logoutAction()
+    router.push('/')
+    router.refresh()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
+          <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
+            <MainNav />
+            <UserNav />
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <Loader className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
+          <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
+            <MainNav />
+            <UserNav />
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Profile not found</p>
+        </main>
+      </div>
+    )
+  }
+
+  const tabParam = searchParams.get('tab')
+  const defaultTab = ['profile', 'orders', 'security'].includes(tabParam || '')
+    ? (tabParam as 'profile' | 'orders' | 'security')
+    : 'profile'
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -64,25 +187,23 @@ export default function AccountPage() {
         <div className="container px-4 py-8 sm:px-8 md:py-12">
           <div className="mb-8">
             <h1 className="text-3xl font-bold">Account Settings</h1>
-            <p className="text-muted-foreground">Manage your profile and preferences</p>
+            <p className="text-muted-foreground">
+              Manage your profile{user.role === 'VENDOR' ? ' and vendor store' : ''}
+            </p>
           </div>
 
-          <Tabs defaultValue="profile" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="mb-6 w-full justify-start border-b border-secondary bg-transparent">
               <TabsTrigger value="profile" className="border-b-2 border-transparent data-[state=active]:border-primary">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </TabsTrigger>
-              <TabsTrigger value="addresses" className="border-b-2 border-transparent data-[state=active]:border-primary">
-                <MapPin className="mr-2 h-4 w-4" />
-                Addresses
-              </TabsTrigger>
               <TabsTrigger value="orders" className="border-b-2 border-transparent data-[state=active]:border-primary">
                 Orders
               </TabsTrigger>
-              <TabsTrigger value="preferences" className="border-b-2 border-transparent data-[state=active]:border-primary">
+              <TabsTrigger value="security" className="border-b-2 border-transparent data-[state=active]:border-primary">
                 <Settings className="mr-2 h-4 w-4" />
-                Preferences
+                Security
               </TabsTrigger>
             </TabsList>
 
@@ -91,13 +212,25 @@ export default function AccountPage() {
               <Card className="border-secondary">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Personal Information</h2>
+                    <div>
+                      <h2 className="text-xl font-semibold">Personal Information</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {user.role === 'BUYER' ? 'Update your profile' : 'Buyer account information'}
+                      </p>
+                    </div>
                     <Button
                       variant={isEditing ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setIsEditing(!isEditing)}
+                      onClick={() => {
+                        if (isEditing) {
+                          handleSaveProfile()
+                        } else {
+                          setIsEditing(true)
+                        }
+                      }}
+                      disabled={isSaving}
                     >
-                      {isEditing ? 'Save Changes' : 'Edit'}
+                      {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit'}
                     </Button>
                   </div>
                 </CardHeader>
@@ -106,158 +239,225 @@ export default function AccountPage() {
                     <div>
                       <label className="text-sm font-medium">Full Name</label>
                       <Input
-                        value={userData.fullName}
+                        value={formData.name}
                         readOnly={!isEditing}
-                        onChange={(e) => setUserData({ ...userData, fullName: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="mt-2"
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Email</label>
-                      <Input
-                        value={userData.email}
-                        readOnly={!isEditing}
-                        onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                        className="mt-2"
-                      />
+                      <Input value={profile.email} readOnly className="mt-2 bg-secondary" />
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Phone</label>
+                    <label className="text-sm font-medium">Role</label>
+                    <Input value={user.role === 'VENDOR' ? 'Vendor' : 'Buyer'} readOnly className="mt-2 bg-secondary" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Member Since</label>
                     <Input
-                      value={userData.phone}
-                      readOnly={!isEditing}
-                      onChange={(e) => setUserData({ ...userData, phone: e.target.value })}
-                      className="mt-2"
+                      value={new Date(profile.createdAt).toLocaleDateString()}
+                      readOnly
+                      className="mt-2 bg-secondary"
                     />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-secondary border-red-200 bg-red-50/30">
-                <CardHeader>
-                  <h2 className="text-xl font-semibold text-red-900">Danger Zone</h2>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-red-800">
-                    These actions cannot be undone. Please proceed with caution.
-                  </p>
-                  <Button variant="destructive">Delete Account</Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Addresses Tab */}
-            <TabsContent value="addresses" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Saved Addresses</h2>
-                <Button>Add Address</Button>
-              </div>
-
-              <div className="space-y-4">
-                {savedAddresses.map((address) => (
-                  <Card key={address.id} className="border-secondary">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{address.label}</h3>
-                            {address.isDefault && (
-                              <Badge variant="secondary">Default</Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {address.address}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {address.city}, {address.state} {address.zipCode}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="w-full bg-transparent">
-                            Delete
-                          </Button>
-                        </div>
+              {user.role === 'VENDOR' && profile.vendorProfile && (
+                <Card className="border-secondary">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-semibold">Vendor Store Information</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Manage your store details</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium">Store Name</label>
+                        <Input
+                          value={formData.storeName}
+                          readOnly={!isEditing}
+                          onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Rating</label>
+                        <Input
+                          value={`${profile.vendorProfile.rating.toFixed(1)} ⭐`}
+                          readOnly
+                          className="mt-2 bg-secondary"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Store Description</label>
+                      <Textarea
+                        value={formData.description}
+                        readOnly={!isEditing}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="mt-2"
+                        rows={4}
+                      />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium">Total Sales</label>
+                        <Input
+                          value={profile.vendorProfile.totalSales}
+                          readOnly
+                          className="mt-2 bg-secondary"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Total Earnings</label>
+                        <Input
+                          value={`$${profile.vendorProfile.earnings.toFixed(2)}`}
+                          readOnly
+                          className="mt-2 bg-secondary"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Orders Tab */}
             <TabsContent value="orders" className="space-y-4">
-              <h2 className="text-xl font-semibold">Recent Orders</h2>
-              {recentOrders.map((order) => (
-                <Card key={order.id} className="border-secondary">
-                  <CardContent className="flex items-center justify-between pt-6">
-                    <div>
-                      <p className="font-semibold">{order.id}</p>
-                      <p className="text-sm text-muted-foreground">{order.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">${order.total.toFixed(2)}</p>
-                      <Badge
-                        variant={
-                          order.status === 'Delivered'
-                            ? 'secondary'
-                            : 'outline'
-                        }
-                      >
-                        {order.status}
-                      </Badge>
-                    </div>
+              <h2 className="text-xl font-semibold">Order History</h2>
+              {profile.orders && profile.orders.length > 0 ? (
+                <div className="space-y-4">
+                  {profile.orders.map((order: any) => {
+                    const statusColors: any = {
+                      PENDING: 'bg-yellow-100 text-yellow-800',
+                      CONFIRMED: 'bg-blue-100 text-blue-800',
+                      SHIPPED: 'bg-purple-100 text-purple-800',
+                      DELIVERED: 'bg-green-100 text-green-800',
+                      CANCELLED: 'bg-red-100 text-red-800',
+                    }
+
+                    return (
+                      <Card key={order.id} className="border-secondary">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-sm">Order #{order.id.slice(0, 8)}</p>
+                                <Badge className={statusColors[order.status] || 'bg-gray-100 text-gray-800'}>
+                                  {order.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(order.createdAt).toLocaleDateString()}
+                              </p>
+                              <div className="text-sm">
+                                <p className="text-muted-foreground">
+                                  {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-lg">
+                                ${order.totalPrice}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              ) : (
+                <Card className="border-secondary">
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-muted-foreground">No orders yet</p>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </TabsContent>
 
-            {/* Preferences Tab */}
-            <TabsContent value="preferences" className="space-y-6">
+            {/* Security Tab */}
+            <TabsContent value="security" className="space-y-6">
               <Card className="border-secondary">
                 <CardHeader>
-                  <h2 className="text-xl font-semibold">Email Preferences</h2>
+                  <h2 className="text-xl font-semibold">Change Password</h2>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" defaultChecked className="rounded" />
-                    <div>
-                      <p className="font-medium">Order Updates</p>
-                      <p className="text-sm text-muted-foreground">
-                        Receive notifications about your orders
-                      </p>
+                  {!showPasswordForm ? (
+                    <Button variant="outline" onClick={() => setShowPasswordForm(true)}>
+                      Change Password
+                    </Button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Current Password</label>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordData.currentPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">New Password</label>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordData.newPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Confirm Password</label>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          className="mt-2"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleChangePassword} disabled={isSaving}>
+                          {isSaving ? 'Updating...' : 'Update Password'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowPasswordForm(false)
+                            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  </label>
-                  <Separator />
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" defaultChecked className="rounded" />
-                    <div>
-                      <p className="font-medium">Product Recommendations</p>
-                      <p className="text-sm text-muted-foreground">
-                        Get personalized product suggestions
-                      </p>
-                    </div>
-                  </label>
-                  <Separator />
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" className="rounded" />
-                    <div>
-                      <p className="font-medium">Marketing Emails</p>
-                      <p className="text-sm text-muted-foreground">
-                        Receive special offers and promotions
-                      </p>
-                    </div>
-                  </label>
+                  )}
                 </CardContent>
               </Card>
 
-              <Button className="w-full gap-2">
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </Button>
+              <Card className="border-secondary">
+                <CardHeader>
+                  <h2 className="text-xl font-semibold">Session & Sign Out</h2>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Sign out of your account on this device.
+                  </p>
+                  <Button variant="destructive" className="gap-2" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
