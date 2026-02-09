@@ -9,7 +9,7 @@ export function MainNav() {
         <span className="hidden font-bold text-lg text-primary sm:inline-block">FreshMarket</span>
       </Link>
       <nav className="hidden gap-6 md:flex">
-        <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
+        <Link href="/shop" className="text-sm font-medium transition-colors hover:text-primary">
           Shop
         </Link>
         <Link

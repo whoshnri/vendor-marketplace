@@ -8,9 +8,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MainNav } from '@/components/main-nav'
-import { UserNav } from '@/components/user-nav'
 import { SiteFooter } from '@/components/site-footer'
+import { SiteHeader } from '@/components/site-header'
 import { useToast } from '@/hooks/use-toast'
 import { getVendorById } from '@/app/actions/vendors'
 import { addToCart } from '@/app/actions/cart'
@@ -141,12 +140,7 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
-        <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
-          <MainNav />
-          <UserNav />
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1">
         {/* Breadcrumb */}
@@ -317,7 +311,7 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
         </section>
       </main>
 
-        <SiteFooter />
+      <SiteFooter />
     </div>
   )
 }

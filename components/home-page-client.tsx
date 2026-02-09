@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
+import { SiteHeader } from '@/components/site-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -62,7 +63,6 @@ export default function HomePage({
   const [isUpdatingCart, setIsUpdatingCart] = useState(false)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all')
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'popular')
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({})
@@ -135,43 +135,45 @@ export default function HomePage({
     setIsUpdatingCart(false)
   }
 
-  const handleSearch = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault()
-      const params = new URLSearchParams()
-      if (searchQuery) params.set('search', searchQuery)
-      if (selectedCategory && selectedCategory !== 'all') params.set('category', selectedCategory)
-      params.set('sort', sortBy)
 
-      router.push(`/?${params.toString()}`)
 
-      // Fetch filtered data
+  useEffect(() => {
+    const search = searchParams.get('search') || ''
+    const category = searchParams.get('category') || 'all'
+    const sort = searchParams.get('sort') || 'popular'
+
+    setSelectedCategory(category)
+    setSortBy(sort)
+
+    // Trigger search when URL params change
+    const fetchData = async () => {
       setIsLoading(true)
       try {
         const result = await getFoodItems({
-          search: searchQuery,
-          categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
+          search: search,
+          categoryId: category === 'all' ? undefined : category,
           minPrice: priceRange[0],
           maxPrice: priceRange[1],
-          sortBy: sortBy as any,
+          sortBy: sort as any,
           take: 40,
         })
         setItems(result.items)
         setHasMore(result.hasMore)
       } catch (error) {
-        console.error('Error searching:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setIsLoading(false)
       }
-    },
-    [searchQuery, selectedCategory, priceRange, sortBy, router]
-  )
+    }
+    fetchData()
+  }, [searchParams, priceRange, router])
 
   const handleLoadMore = async () => {
     setIsLoading(true)
     try {
+      const search = searchParams.get('search') || ''
       const result = await getFoodItems({
-        search: searchQuery,
+        search: search,
         categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
         minPrice: priceRange[0],
         maxPrice: priceRange[1],
@@ -190,36 +192,7 @@ export default function HomePage({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
-        <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
-          <MainNav />
-          <div className="ml-auto flex items-center gap-4">
-            <div className="relative hidden md:flex">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search food items..."
-                className="w-[200px] pl-8 md:w-[300px] lg:w-[400px]"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            {!isUserLoading && currentUser?.role !== 'VENDOR' && (
-              <Link href="/sell">
-                <Button variant="outline" size="sm">
-                  Become a Vendor
-                </Button>
-              </Link>
-            )}
-            <Link href="/cart">
-              <Button size="icon" variant="outline">
-                <ShoppingCart className="h-4 w-4" />
-              </Button>
-            </Link>
-            <UserNav />
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
       <main className="flex-1">
         {/* Hero Section */}
         <section className="border-b border-secondary bg-gradient-to-br from-primary/5 via-accent/5 to-background py-12 md:py-16">
@@ -263,8 +236,13 @@ export default function HomePage({
         <div className="container px-4 py-8 sm:px-8 md:py-12">
           {/* Categories Section */}
           <div className="mb-12">
-            <h2 className="mb-6 text-2xl font-bold">Shop by Category</h2>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Shop by Category</h2>
+              <Link href="/shop" className="text-sm font-medium text-primary hover:underline">
+                View all
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {initialCategories.map((category) => (
                 <Link key={category.id} href={`/?category=${category.id}`}>
                   <Card className="h-full overflow-hidden border-secondary bg-gradient-to-br from-white to-secondary/30 transition-all hover:border-primary hover:shadow-md">
@@ -370,7 +348,16 @@ export default function HomePage({
               <Separator />
 
               <div className="hidden md:block">
-                <Button className="w-full" onClick={handleSearch as any} disabled={isLoading}>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams)
+                    params.set('category', selectedCategory)
+                    params.set('sort', sortBy)
+                    router.push(`/?${params.toString()}`)
+                  }}
+                  disabled={isLoading}
+                >
                   {isLoading ? 'Applying Filters...' : 'Apply Filters'}
                 </Button>
               </div>
@@ -379,8 +366,11 @@ export default function HomePage({
             <div>
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-xl font-bold">
-                  Featured Items ({items.length} of {totalItems})
+                  Featured Items
                 </h3>
+                <span className="text-sm text-muted-foreground">
+                  {items.length} items
+                </span>
               </div>
 
               {items.length === 0 ? (
@@ -393,78 +383,78 @@ export default function HomePage({
                     {items.map((item) => {
                       const quantityInCart = cartQuantities[item.id] || 0
                       return (
-                      <Link key={item.id} href={`/shop/${item.id}`}>
-                        <Card className="h-full overflow-hidden border-secondary transition-all hover:border-primary hover:shadow-md">
-                          <div className="aspect-square w-full overflow-hidden bg-secondary">
-                            <Image
-                              src={item.image || '/placeholder.svg'}
-                              alt={item.name}
-                              width={300}
-                              height={300}
-                              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                            />
-                          </div>
-                          <CardHeader className="p-4 pb-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <h3 className="line-clamp-2 text-base font-semibold text-foreground">{item.name}</h3>
-                                <p className="text-xs text-muted-foreground">{item.vendor}</p>
+                        <Link key={item.id} href={`/shop/${item.id}`}>
+                          <Card className="h-full overflow-hidden border-secondary transition-all hover:border-primary hover:shadow-md">
+                            <div className="aspect-square w-full overflow-hidden bg-secondary">
+                              <Image
+                                src={item.image || '/placeholder.svg'}
+                                alt={item.name}
+                                width={300}
+                                height={300}
+                                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                              />
+                            </div>
+                            <CardHeader className="p-4 pb-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <h3 className="line-clamp-2 text-base font-semibold text-foreground">{item.name}</h3>
+                                  <p className="text-xs text-muted-foreground">{item.vendor}</p>
+                                </div>
+                                <Badge variant="secondary" className="shrink-0">
+                                  {item.category}
+                                </Badge>
                               </div>
-                              <Badge variant="secondary" className="shrink-0">
-                                {item.category}
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="p-4 pt-2">
-                            <p className="line-clamp-1 text-sm text-muted-foreground mb-3">{item.description}</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xl font-bold text-primary">${item.price.toFixed(2)}</span>
-                              <span className="text-xs text-muted-foreground">{item.stock} in stock</span>
-                            </div>
-                          </CardContent>
-                          <CardFooter className="flex items-center justify-between p-4 pt-0">
-                            <div className="flex items-center gap-1">
-                              <span className="text-sm text-primary font-semibold">{item.rating}</span>
-                              <span className="text-xs text-muted-foreground">({item.reviews} reviews)</span>
-                            </div>
-                            {quantityInCart > 0 ? (
-                              <div
-                                className="flex items-center gap-2 rounded-md border border-secondary bg-secondary/50"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                }}
-                              >
-                                <button
-                                  className="p-1 hover:bg-secondary"
-                                  onClick={(e) => handleUpdateQuantity(e, item.id, quantityInCart - 1)}
+                            </CardHeader>
+                            <CardContent className="p-4 pt-2">
+                              <p className="line-clamp-1 text-sm text-muted-foreground mb-3">{item.description}</p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xl font-bold text-primary">${item.price.toFixed(2)}</span>
+                                <span className="text-xs text-muted-foreground">{item.stock} in stock</span>
+                              </div>
+                            </CardContent>
+                            <CardFooter className="flex items-center justify-between p-4 pt-0">
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm text-primary font-semibold">{item.rating}</span>
+                                <span className="text-xs text-muted-foreground">({item.reviews} reviews)</span>
+                              </div>
+                              {quantityInCart > 0 ? (
+                                <div
+                                  className="flex items-center gap-2 rounded-md border border-secondary bg-secondary/50"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                  }}
+                                >
+                                  <button
+                                    className="p-1 hover:bg-secondary"
+                                    onClick={(e) => handleUpdateQuantity(e, item.id, quantityInCart - 1)}
+                                    disabled={isUpdatingCart}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="w-6 text-center text-sm font-semibold">{quantityInCart}</span>
+                                  <button
+                                    className="p-1 hover:bg-secondary"
+                                    onClick={(e) => handleUpdateQuantity(e, item.id, quantityInCart + 1)}
+                                    disabled={isUpdatingCart || quantityInCart >= item.stock}
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={(e) => handleAddToCart(e, item.id)}
                                   disabled={isUpdatingCart}
                                 >
-                                  <Minus className="h-4 w-4" />
-                                </button>
-                                <span className="w-6 text-center text-sm font-semibold">{quantityInCart}</span>
-                                <button
-                                  className="p-1 hover:bg-secondary"
-                                  onClick={(e) => handleUpdateQuantity(e, item.id, quantityInCart + 1)}
-                                  disabled={isUpdatingCart || quantityInCart >= item.stock}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="gap-1"
-                                onClick={(e) => handleAddToCart(e, item.id)}
-                                disabled={isUpdatingCart}
-                              >
-                                <ShoppingCart className="h-3 w-3" />
-                                Add
-                              </Button>
-                            )}
-                          </CardFooter>
-                        </Card>
-                      </Link>
+                                  <ShoppingCart className="h-3 w-3" />
+                                  Add
+                                </Button>
+                              )}
+                            </CardFooter>
+                          </Card>
+                        </Link>
                       )
                     })}
                   </div>

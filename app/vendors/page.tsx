@@ -6,9 +6,8 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MainNav } from '@/components/main-nav'
-import { UserNav } from '@/components/user-nav'
 import { SiteFooter } from '@/components/site-footer'
+import { SiteHeader } from '@/components/site-header'
 import { useEffect, useState } from 'react'
 import { getVendors } from '@/app/actions/vendors'
 
@@ -46,12 +45,7 @@ export default function VendorsPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
-        <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
-          <MainNav />
-          <UserNav />
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1">
         <div className="container px-4 py-8 sm:px-8 md:py-12">

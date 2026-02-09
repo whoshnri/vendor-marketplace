@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Search, ShoppingCart, Star } from 'lucide-react'
+import { SiteHeader } from '@/components/site-header'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -10,8 +12,6 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { MainNav } from '@/components/main-nav'
-import { UserNav } from '@/components/user-nav'
 import { getFoodItems } from '@/app/actions/food-items'
 import { addToCart } from '@/app/actions/cart'
 
@@ -45,10 +45,11 @@ interface ShopPageClientProps {
 
 export default function ShopPageClient({ categories }: ShopPageClientProps) {
   const router = useRouter()
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const searchParams = useSearchParams()
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'all')
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('popular')
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+  const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'popular')
   const [items, setItems] = useState<FoodItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
@@ -73,10 +74,26 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
     }
   }, [searchQuery, selectedCategory, priceRange, sortBy])
 
-  // Load items on mount
-  const handleFilterChange = useCallback(async () => {
-    await loadItems()
-  }, [loadItems])
+  useEffect(() => {
+    const search = searchParams.get('search') || ''
+    const category = searchParams.get('category') || 'all'
+    const sort = searchParams.get('sort') || 'popular'
+
+    setSearchQuery(search)
+    setSelectedCategory(category)
+    setSortBy(sort)
+
+    loadItems()
+  }, [searchParams, loadItems])
+
+  const handleFilterChange = useCallback(() => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('search', searchQuery)
+    if (selectedCategory && selectedCategory !== 'all') params.set('category', selectedCategory)
+    if (sortBy) params.set('sort', sortBy)
+
+    router.push(`/shop?${params.toString()}`)
+  }, [searchQuery, selectedCategory, sortBy, router])
 
   const handleAddToCart = async (e: React.MouseEvent, itemId: string) => {
     e.preventDefault()
@@ -88,45 +105,10 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
-        <div className="container flex h-16 items-center gap-4 px-4 sm:px-8">
-          <MainNav />
-          <div className="relative hidden md:flex flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search items or vendors..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Link href="/cart">
-              <Button size="icon" variant="outline">
-                <ShoppingCart className="h-4 w-4" />
-              </Button>
-            </Link>
-            <UserNav />
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1">
         <div className="container px-4 py-8 sm:px-8">
-          {/* Mobile Search */}
-          <div className="mb-6 md:hidden">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8"
-              />
-            </div>
-          </div>
 
           {/* Page Title */}
           <div className="mb-8">
@@ -146,11 +128,10 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                     onClick={() => {
                       setSelectedCategory('all')
                     }}
-                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
-                      selectedCategory === 'all'
-                        ? 'bg-primary text-primary-foreground font-semibold'
-                        : 'hover:bg-secondary text-foreground'
-                    }`}
+                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${selectedCategory === 'all'
+                      ? 'bprimary text-primary-foreground font-semibold'
+                      : 'her:bg-secondary text-foreground'
+                      }`}
                   >
                     <span>All Items</span>
                   </button>
@@ -160,11 +141,10 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                       onClick={() => {
                         setSelectedCategory(cat.id)
                       }}
-                      className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
-                        selectedCategory === cat.id
-                          ? 'bg-primary text-primary-foreground font-semibold'
-                          : 'hover:bg-secondary text-foreground'
-                      }`}
+                      className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${selectedCategory === cat.id
+                        ? 'bprimary text-primary-foreground font-semibold'
+                        : 'her:bg-secondary text-foreground'
+                        }`}
                     >
                       <span>{cat.name}</span>
                       <span className="text-xs opacity-75">({cat.count})</span>
