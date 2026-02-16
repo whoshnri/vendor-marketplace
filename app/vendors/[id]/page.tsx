@@ -109,12 +109,7 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
-          <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
-            <MainNav />
-            <UserNav />
-          </div>
-        </header>
+        <SiteHeader />
         <main className="flex-1 flex items-center justify-center">
           <Loader className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -125,12 +120,7 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
   if (!vendor) {
     return (
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 w-full border-b border-secondary bg-background">
-          <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
-            <MainNav />
-            <UserNav />
-          </div>
-        </header>
+        <SiteHeader />
         <main className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Vendor not found</p>
         </main>

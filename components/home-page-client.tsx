@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, Leaf, ShoppingCart, ChevronRight, Plus, Minus } from 'lucide-react'
+import { Search, Leaf, ShoppingCart, ChevronRight, Plus, Minus, Star } from 'lucide-react'
+import { useFavorites } from '@/lib/favorites-context'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { SiteFooter } from '@/components/site-footer'
 import { getFoodItems } from '@/app/actions/food-items'
 import { addToCart, getCart, updateCartItem } from '@/app/actions/cart'
+import { formatCurrency } from '@/lib/utils'
 import { getCurrentUser } from '@/app/actions/auth'
 
 interface Category {
@@ -68,6 +70,7 @@ export default function HomePage({
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserLoading, setIsUserLoading] = useState(true)
+  const { isFavorite, toggleFavorite } = useFavorites()
 
   const refreshCart = useCallback(async () => {
     const result = await getCart()
@@ -244,16 +247,16 @@ export default function HomePage({
             </div>
             <div className="grid grid-cols-2 gap-3 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {initialCategories.map((category) => (
-                <Link key={category.id} href={`/?category=${category.id}`}>
+                <Link key={category.id} href={`/shop?category=${category.id}`}>
                   <Card className="h-full overflow-hidden border-secondary bg-gradient-to-br from-white to-secondary/30 transition-all hover:border-primary hover:shadow-md">
-                    <div className="aspect-[4/3] w-full overflow-hidden bg-secondary sm:aspect-square">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-secondary sm:aspect-square">
                       <div className="flex h-full items-center justify-center text-3xl">
                         {category.image ? (
                           <Image
                             src={category.image}
                             alt={category.name}
                             fill
-                            className="object-cover"
+                            className="object-cover transition-transform duration-300 group-hover:scale-110"
                           />
                         ) : (
                           '🛒'
@@ -282,11 +285,16 @@ export default function HomePage({
                       type="checkbox"
                       id="price-0-10"
                       checked={priceRange[0] === 0 && priceRange[1] >= 10}
-                      onChange={() => setPriceRange([0, 10])}
+                      onChange={() => {
+                        const params = new URLSearchParams()
+                        params.set('minPrice', '0')
+                        params.set('maxPrice', '10')
+                        router.push(`/shop?${params.toString()}`)
+                      }}
                       className="mr-2"
                     />
                     <label htmlFor="price-0-10" className="text-sm">
-                      Under $10
+                      Under {formatCurrency(10)}
                     </label>
                   </div>
                   <div className="flex items-center">
@@ -294,11 +302,16 @@ export default function HomePage({
                       type="checkbox"
                       id="price-10-25"
                       checked={priceRange[0] === 10 && priceRange[1] === 25}
-                      onChange={() => setPriceRange([10, 25])}
+                      onChange={() => {
+                        const params = new URLSearchParams()
+                        params.set('minPrice', '10')
+                        params.set('maxPrice', '25')
+                        router.push(`/shop?${params.toString()}`)
+                      }}
                       className="mr-2"
                     />
                     <label htmlFor="price-10-25" className="text-sm">
-                      $10 - $25
+                      {formatCurrency(10)} - {formatCurrency(25)}
                     </label>
                   </div>
                   <div className="flex items-center">
@@ -306,11 +319,16 @@ export default function HomePage({
                       type="checkbox"
                       id="price-25-50"
                       checked={priceRange[0] === 25 && priceRange[1] === 50}
-                      onChange={() => setPriceRange([25, 50])}
+                      onChange={() => {
+                        const params = new URLSearchParams()
+                        params.set('minPrice', '25')
+                        params.set('maxPrice', '50')
+                        router.push(`/shop?${params.toString()}`)
+                      }}
                       className="mr-2"
                     />
                     <label htmlFor="price-25-50" className="text-sm">
-                      $25 - $50
+                      {formatCurrency(25)} - {formatCurrency(50)}
                     </label>
                   </div>
                   <div className="flex items-center">
@@ -318,11 +336,15 @@ export default function HomePage({
                       type="checkbox"
                       id="price-50plus"
                       checked={priceRange[0] === 50}
-                      onChange={() => setPriceRange([50, 1000])}
+                      onChange={() => {
+                        const params = new URLSearchParams()
+                        params.set('minPrice', '50')
+                        router.push(`/shop?${params.toString()}`)
+                      }}
                       className="mr-2"
                     />
                     <label htmlFor="price-50plus" className="text-sm">
-                      $50+
+                      {formatCurrency(50)}+
                     </label>
                   </div>
                 </div>
@@ -334,7 +356,11 @@ export default function HomePage({
                 <h3 className="mb-3 text-lg font-semibold">Sort By</h3>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => {
+                    const params = new URLSearchParams()
+                    params.set('sort', e.target.value)
+                    router.push(`/shop?${params.toString()}`)
+                  }}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="popular">Most Popular</option>
@@ -351,10 +377,12 @@ export default function HomePage({
                 <Button
                   className="w-full"
                   onClick={() => {
-                    const params = new URLSearchParams(searchParams)
-                    params.set('category', selectedCategory)
-                    params.set('sort', sortBy)
-                    router.push(`/?${params.toString()}`)
+                    const params = new URLSearchParams()
+                    if (selectedCategory !== 'all') params.set('category', selectedCategory)
+                    if (sortBy !== 'popular') params.set('sort', sortBy)
+                    if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString())
+                    if (priceRange[1] < 10000) params.set('maxPrice', priceRange[1].toString())
+                    router.push(`/shop?${params.toString()}`)
                   }}
                   disabled={isLoading}
                 >
@@ -379,12 +407,31 @@ export default function HomePage({
                 </div>
               ) : (
                 <>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-6 lg:grid-cols-3">
                     {items.map((item) => {
                       const quantityInCart = cartQuantities[item.id] || 0
                       return (
                         <Link key={item.id} href={`/shop/${item.id}`}>
-                          <Card className="h-full overflow-hidden border-secondary transition-all hover:border-primary hover:shadow-md">
+                          <Card className="h-full overflow-hidden border-secondary transition-all hover:border-primary hover:shadow-md relative group">
+                            <button
+                              className="absolute top-2 right-2 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm border border-secondary shadow-sm hover:scale-110 transition-all"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                toggleFavorite({
+                                  id: item.id,
+                                  name: item.name,
+                                  vendor: item.vendor,
+                                  price: item.price,
+                                  image: item.image,
+                                  category: item.category,
+                                  rating: item.rating,
+                                  reviews: item.reviews
+                                })
+                              }}
+                            >
+                              <Star className={`h-4 w-4 ${isFavorite(item.id) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                            </button>
                             <div className="aspect-square w-full overflow-hidden bg-secondary">
                               <Image
                                 src={item.image || '/placeholder.svg'}
@@ -394,51 +441,58 @@ export default function HomePage({
                                 className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                               />
                             </div>
-                            <CardHeader className="p-4 pb-2">
-                              <div className="flex items-start justify-between gap-2">
+                            <CardHeader className="p-3 pb-1">
+                              <div className="flex items-start justify-between gap-1">
                                 <div className="flex-1">
-                                  <h3 className="line-clamp-2 text-base font-semibold text-foreground">{item.name}</h3>
-                                  <p className="text-xs text-muted-foreground">{item.vendor}</p>
+                                  <h3 className="line-clamp-2 text-sm font-semibold text-foreground sm:text-base leading-tight">{item.name}</h3>
+                                  <p className="text-[10px] text-muted-foreground sm:text-xs">{item.vendor}</p>
                                 </div>
-                                <Badge variant="secondary" className="shrink-0">
+                                <Badge variant="secondary" className="shrink-0 text-[10px] px-1 py-0 h-4">
                                   {item.category}
                                 </Badge>
                               </div>
                             </CardHeader>
-                            <CardContent className="p-4 pt-2">
-                              <p className="line-clamp-1 text-sm text-muted-foreground mb-3">{item.description}</p>
+                            <CardContent className="p-3 pt-1">
+                              <p className="line-clamp-1 text-xs text-muted-foreground mb-2 sm:text-sm">{item.description}</p>
                               <div className="flex items-center justify-between">
-                                <span className="text-xl font-bold text-primary">${item.price.toFixed(2)}</span>
-                                <span className="text-xs text-muted-foreground">{item.stock} in stock</span>
+                                <span className="text-base font-bold text-primary sm:text-xl">{formatCurrency(item.price)}</span>
+                                <span className="text-[10px] text-muted-foreground sm:text-xs">{item.stock} in stock</span>
                               </div>
                             </CardContent>
-                            <CardFooter className="flex items-center justify-between p-4 pt-0">
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-primary font-semibold">{item.rating}</span>
-                                <span className="text-xs text-muted-foreground">({item.reviews} reviews)</span>
+                            <CardFooter className="flex flex-col items-stretch p-3 pt-0 gap-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-primary font-semibold sm:text-sm">{item.rating}</span>
+                                  <span className="text-[10px] text-muted-foreground sm:text-xs">({item.reviews})</span>
+                                </div>
                               </div>
+                              {quantityInCart > 0 && (
+                                <Badge variant="default" className="bg-primary/90 text-white pointer-events-none h-6 text-[10px] w-full justify-center px-1">
+                                  In Cart
+                                </Badge>
+                              )}
                               {quantityInCart > 0 ? (
                                 <div
-                                  className="flex items-center gap-2 rounded-md border border-secondary bg-secondary/50"
+                                  className="flex items-center justify-between rounded-md border border-secondary bg-secondary/30 h-8"
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
                                   }}
                                 >
                                   <button
-                                    className="p-1 hover:bg-secondary"
+                                    className="p-1 px-2 hover:bg-secondary rounded-l-md"
                                     onClick={(e) => handleUpdateQuantity(e, item.id, quantityInCart - 1)}
                                     disabled={isUpdatingCart}
                                   >
-                                    <Minus className="h-4 w-4" />
+                                    <Minus className="h-3 w-3" />
                                   </button>
-                                  <span className="w-6 text-center text-sm font-semibold">{quantityInCart}</span>
+                                  <span className="text-xs font-semibold">{quantityInCart}</span>
                                   <button
-                                    className="p-1 hover:bg-secondary"
+                                    className="p-1 px-2 hover:bg-secondary rounded-r-md"
                                     onClick={(e) => handleUpdateQuantity(e, item.id, quantityInCart + 1)}
                                     disabled={isUpdatingCart || quantityInCart >= item.stock}
                                   >
-                                    <Plus className="h-4 w-4" />
+                                    <Plus className="h-3 w-3" />
                                   </button>
                                 </div>
                               ) : (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Search, ShoppingCart, Star } from 'lucide-react'
+import { Search, ShoppingCart, Star, Plus, Minus, Filter, ArrowUpDown } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -13,7 +13,10 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { getFoodItems } from '@/app/actions/food-items'
-import { addToCart } from '@/app/actions/cart'
+import { addToCart, getCart, updateCartItem } from '@/app/actions/cart'
+import { formatCurrency } from '@/lib/utils'
+import { useFavorites } from '@/lib/favorites-context'
+import { useToast } from '@/hooks/use-toast'
 
 interface Category {
   id: string
@@ -53,6 +56,75 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
   const [items, setItems] = useState<FoodItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
+  const [isUpdatingCart, setIsUpdatingCart] = useState<string | null>(null)
+  const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({})
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const { toast } = useToast()
+
+  const refreshCart = useCallback(async () => {
+    const result = await getCart()
+    if (!result.ok) {
+      setCartQuantities({})
+      return
+    }
+    const next: Record<string, number> = {}
+    result.items.forEach((item) => {
+      next[item.id] = item.quantity
+    })
+    setCartQuantities(next)
+  }, [])
+
+  useEffect(() => {
+    refreshCart()
+  }, [refreshCart])
+
+  const handleAddToCart = async (e: React.MouseEvent, itemId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsUpdatingCart(itemId)
+    try {
+      const result = await addToCart(itemId, 1)
+      if (result.ok) {
+        await refreshCart()
+        toast({
+          title: 'Added to cart',
+          description: 'The item has been added to your shopping cart.',
+        })
+      } else {
+        router.push('/login')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to add to cart',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUpdatingCart(null)
+    }
+  }
+
+  const handleUpdateQuantity = async (e: React.MouseEvent, itemId: string, newQuantity: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsUpdatingCart(itemId)
+    try {
+      const result = await updateCartItem(itemId, newQuantity)
+      if (result.ok) {
+        await refreshCart()
+      } else {
+        router.push('/login')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update quantity',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUpdatingCart(null)
+    }
+  }
 
   const loadItems = useCallback(async () => {
     setIsLoading(true)
@@ -95,13 +167,6 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
     router.push(`/shop?${params.toString()}`)
   }, [searchQuery, selectedCategory, sortBy, router])
 
-  const handleAddToCart = async (e: React.MouseEvent, itemId: string) => {
-    e.preventDefault()
-    const result = await addToCart(itemId, 1)
-    if (!result.ok) {
-      router.push('/login')
-    }
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -129,8 +194,8 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                       setSelectedCategory('all')
                     }}
                     className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${selectedCategory === 'all'
-                      ? 'bprimary text-primary-foreground font-semibold'
-                      : 'her:bg-secondary text-foreground'
+                      ? 'bg-primary text-primary-foreground font-semibold'
+                      : 'hover:bg-secondary text-foreground'
                       }`}
                   >
                     <span>All Items</span>
@@ -142,8 +207,8 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                         setSelectedCategory(cat.id)
                       }}
                       className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${selectedCategory === cat.id
-                        ? 'bprimary text-primary-foreground font-semibold'
-                        : 'her:bg-secondary text-foreground'
+                        ? 'bg-primary text-primary-foreground font-semibold'
+                        : 'hover:bg-secondary text-foreground'
                         }`}
                     >
                       <span>{cat.name}</span>
@@ -179,7 +244,7 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                     />
                   </div>
                   <div className="text-sm font-semibold">
-                    ${priceRange[0]} - ${priceRange[1]}
+                    {formatCurrency(priceRange[0])} - {formatCurrency(priceRange[1])}
                   </div>
                 </div>
               </div>
@@ -227,10 +292,29 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                   <p className="text-muted-foreground">Try adjusting your filters</p>
                 </div>
               ) : (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((item) => (
                     <Link key={item.id} href={`/shop/${item.id}`}>
-                      <Card className="h-full border-secondary transition-all hover:border-primary hover:shadow-md overflow-hidden">
+                      <Card className="h-full border-secondary transition-all hover:border-primary hover:shadow-md overflow-hidden relative group">
+                        <button
+                          className="absolute top-2 right-2 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm border border-secondary shadow-sm hover:scale-110 transition-all"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleFavorite({
+                              id: item.id,
+                              name: item.name,
+                              vendor: item.vendor,
+                              price: item.price,
+                              image: item.image,
+                              category: item.category,
+                              rating: item.rating,
+                              reviews: item.reviews
+                            })
+                          }}
+                        >
+                          <Star className={`h-4 w-4 ${isFavorite(item.id) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                        </button>
                         <div className="aspect-square w-full overflow-hidden bg-secondary relative">
                           <Image
                             src={item.image || '/placeholder.svg'}
@@ -249,7 +333,7 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                         </CardHeader>
                         <CardContent className="p-4 pt-2 space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-xl font-bold text-primary">${item.price.toFixed(2)}</span>
+                            <span className="text-xl font-bold text-primary">{formatCurrency(item.price)}</span>
                             <span className="text-xs text-muted-foreground">{item.stock} in stock</span>
                           </div>
                           <div className="flex items-center gap-1">
@@ -258,11 +342,44 @@ export default function ShopPageClient({ categories }: ShopPageClientProps) {
                             <span className="text-xs text-muted-foreground">({item.reviews})</span>
                           </div>
                         </CardContent>
-                        <CardFooter className="p-4 pt-0 border-t border-secondary">
-                          <Button className="w-full gap-2" size="sm" onClick={(e) => handleAddToCart(e, item.id)}>
-                            <ShoppingCart className="h-3 w-3" />
-                            Add to Cart
-                          </Button>
+                        <CardFooter className="p-4 pt-0 border-t border-secondary mt-auto">
+                          {cartQuantities[item.id] > 0 ? (
+                            <div
+                              className="flex items-center justify-between w-full gap-2 py-1"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                              }}
+                            >
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => handleUpdateQuantity(e, item.id, cartQuantities[item.id] - 1)}
+                                disabled={isUpdatingCart === item.id}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <div className="flex flex-col items-center">
+                                <span className="text-sm font-semibold">{cartQuantities[item.id]}</span>
+                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">In Cart</span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => handleUpdateQuantity(e, item.id, cartQuantities[item.id] + 1)}
+                                disabled={isUpdatingCart === item.id || cartQuantities[item.id] >= item.stock}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button className="w-full gap-2 h-9" size="sm" onClick={(e) => handleAddToCart(e, item.id)} disabled={isUpdatingCart === item.id}>
+                              <ShoppingCart className="h-3 w-3" />
+                              Add to Cart
+                            </Button>
+                          )}
                         </CardFooter>
                       </Card>
                     </Link>

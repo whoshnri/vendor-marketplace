@@ -8,11 +8,13 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { MainNav } from '@/components/main-nav'
-import { UserNav } from '@/components/user-nav'
-import { Separator } from '@/components/ui/separator'
 import { SiteFooter } from '@/components/site-footer'
+import { SiteHeader } from '@/components/site-header'
 import { CheckoutModal } from '@/components/checkout-modal'
+import { Separator } from '@/components/ui/separator'
+import { UserNav } from '@/components/user-nav'
 import { getCart, removeCartItem, updateCartItem } from '@/app/actions/cart'
+import { formatCurrency } from '@/lib/utils'
 
 export default function CartPage() {
   const [items, setItems] = useState<
@@ -135,7 +137,7 @@ export default function CartPage() {
                         <div className="flex-1">
                           <h3 className="font-semibold text-foreground">{item.name}</h3>
                           <p className="text-sm text-muted-foreground">{item.vendor}</p>
-                          <p className="mt-2 text-base font-semibold text-primary">${item.price.toFixed(2)}</p>
+                          <p className="mt-2 text-base font-semibold text-primary">{formatCurrency(item.price)}</p>
                         </div>
                         <div className="flex flex-col items-end justify-between">
                           <Button
@@ -180,11 +182,11 @@ export default function CartPage() {
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span className="font-medium">${totals.subtotal.toFixed(2)}</span>
+                        <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Tax</span>
-                        <span className="font-medium">${totals.tax.toFixed(2)}</span>
+                        <span className="font-medium">{formatCurrency(totals.tax)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Shipping</span>
@@ -192,7 +194,7 @@ export default function CartPage() {
                           {totals.shipping === 0 ? (
                             <span className="text-primary">FREE</span>
                           ) : (
-                            `$${totals.shipping.toFixed(2)}`
+                            formatCurrency(totals.shipping)
                           )}
                         </span>
                       </div>
@@ -200,7 +202,7 @@ export default function CartPage() {
                     <Separator />
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total</span>
-                      <span className="text-primary">${totals.total.toFixed(2)}</span>
+                      <span className="text-primary">{formatCurrency(totals.total)}</span>
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-3 border-t border-secondary pt-6">

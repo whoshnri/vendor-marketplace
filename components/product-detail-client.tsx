@@ -14,16 +14,20 @@ import {
     ShieldCheck,
     Clock,
     ChevronRight,
-    MessageSquare
+    MessageSquare,
+    Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency } from '@/lib/utils'
+import { useFavorites } from '@/lib/favorites-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { useToast } from '@/hooks/use-toast'
-import { addToCart } from '@/app/actions/cart'
+import { addToCart, getCart, updateCartItem } from '@/app/actions/cart'
+import { useCallback, useEffect } from 'react'
 
 interface ProductDetailClientProps {
     product: any
@@ -33,14 +37,30 @@ interface ProductDetailClientProps {
 export default function ProductDetailClient({ product, relatedProducts }: ProductDetailClientProps) {
     const [quantity, setQuantity] = useState(1)
     const [isAdding, setIsAdding] = useState(false)
+    const [cartCount, setCartCount] = useState(0)
+    const [isUpdatingCart, setIsUpdatingCart] = useState(false)
+    const { isFavorite, toggleFavorite } = useFavorites()
     const router = useRouter()
     const { toast } = useToast()
+
+    const refreshCart = useCallback(async () => {
+        const result = await getCart()
+        if (result.ok) {
+            const itemInCart = result.items.find((item: any) => item.id === product.id)
+            setCartCount(itemInCart ? itemInCart.quantity : 0)
+        }
+    }, [product.id])
+
+    useEffect(() => {
+        refreshCart()
+    }, [refreshCart])
 
     const handleAddToCart = async () => {
         setIsAdding(true)
         try {
             const result = await addToCart(product.id, quantity)
             if (result.ok) {
+                await refreshCart()
                 toast({
                     title: 'Added to cart',
                     description: `${quantity} x ${product.name} added to your cart.`,
@@ -56,6 +76,27 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
             })
         } finally {
             setIsAdding(false)
+        }
+    }
+
+    const handleUpdateQuantity = async (newQuantity: number) => {
+        if (newQuantity < 0) return
+        setIsUpdatingCart(true)
+        try {
+            const result = await updateCartItem(product.id, newQuantity)
+            if (result.ok) {
+                await refreshCart()
+            } else {
+                router.push('/login')
+            }
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: 'Failed to update quantity.',
+                variant: 'destructive',
+            })
+        } finally {
+            setIsUpdatingCart(false)
         }
     }
 
@@ -122,7 +163,7 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
                                 </div>
 
                                 <div className="text-3xl font-bold text-primary">
-                                    ${product.price.toFixed(2)}
+                                    {formatCurrency(product.price)}
                                 </div>
 
                                 <p className="text-lg text-muted-foreground leading-relaxed">
@@ -161,19 +202,66 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 sm:flex-row">
-                                    <Button
-                                        size="lg"
-                                        className="flex-1 h-14 text-lg font-bold shadow-lg shadow-primary/20"
-                                        onClick={handleAddToCart}
-                                        disabled={isAdding || product.stock <= 0}
-                                    >
-                                        {isAdding ? 'Adding to Cart...' : 'Add to Cart'}
-                                        <ShoppingCart className="ml-2 h-5 w-5" />
-                                    </Button>
-                                    <Button variant="outline" size="lg" className="h-14 px-8">
-                                        <Star className="h-5 w-5" />
-                                    </Button>
+                                <div className="flex gap-4">
+                                    <div className="flex-1 flex gap-2">
+                                        {cartCount > 0 ? (
+                                            <div className="flex items-center gap-4 bg-secondary/50 rounded-lg h-14 px-4 flex-1 justify-between border border-secondary shadow-sm">
+                                                <div className="flex items-center gap-4">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-10 w-10 hover:bg-secondary"
+                                                        onClick={() => handleUpdateQuantity(cartCount - 1)}
+                                                        disabled={isUpdatingCart}
+                                                    >
+                                                        <Minus className="h-5 w-5" />
+                                                    </Button>
+                                                    <div className="flex flex-col items-center min-w-[3.5rem]">
+                                                        <span className="text-xl font-bold">{cartCount}</span>
+                                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">In Cart</span>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-10 w-10 hover:bg-secondary"
+                                                        onClick={() => handleUpdateQuantity(cartCount + 1)}
+                                                        disabled={isUpdatingCart || cartCount >= product.stock}
+                                                    >
+                                                        <Plus className="h-5 w-5" />
+                                                    </Button>
+                                                </div>
+                                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-bold px-3 py-1">
+                                                    Added to Cart
+                                                </Badge>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                className="h-14 flex-1 text-lg font-bold shadow-lg shadow-primary/20 gap-3"
+                                                onClick={handleAddToCart}
+                                                disabled={isAdding || product.stock === 0}
+                                            >
+                                                {isAdding ? 'Adding...' : 'Add to Cart'}
+                                                <ShoppingCart className="h-6 w-6" />
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className={`h-14 w-14 shrink-0 transition-all ${isFavorite(product.id) ? 'border-primary ring-1 ring-primary' : 'border-secondary'}`}
+                                            onClick={() => toggleFavorite({
+                                                id: product.id,
+                                                name: product.name,
+                                                vendor: product.vendor,
+                                                price: product.price,
+                                                image: product.image,
+                                                category: product.category,
+                                                rating: product.rating,
+                                                reviews: product.reviews
+                                            })}
+                                        >
+                                            <Star className={`h-7 w-7 transition-all ${isFavorite(product.id) ? 'fill-primary text-primary scale-110' : 'text-muted-foreground'}`} />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -306,7 +394,7 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
                     {relatedProducts.length > 0 && (
                         <section className="mb-12">
                             <h2 className="mb-8 text-2xl font-bold text-foreground">More from {product.category}</h2>
-                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid grid-cols-2 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                                 {relatedProducts.map((item) => (
                                     <Link key={item.id} href={`/shop/${item.id}`}>
                                         <Card className="h-full overflow-hidden border-secondary transition-all hover:border-primary hover:shadow-md">
@@ -322,7 +410,7 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
                                                 <h3 className="line-clamp-1 font-semibold text-foreground text-sm">{item.name}</h3>
                                                 <p className="text-xs text-muted-foreground mb-2">{item.vendor}</p>
                                                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-secondary">
-                                                    <span className="font-bold text-primary">${item.price.toFixed(2)}</span>
+                                                    <span className="font-bold text-primary">{formatCurrency(item.price)}</span>
                                                     <div className="flex items-center gap-1">
                                                         <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                                                         <span className="text-xs font-semibold">{item.rating}</span>

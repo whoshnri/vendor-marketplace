@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, ShoppingCart } from 'lucide-react'
+import { Search, ShoppingCart, Star } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input'
 import { MainNav } from '@/components/main-nav'
 import { UserNav } from '@/components/user-nav'
 import { getCurrentUser } from '@/app/actions/auth'
+import { FavoritesSheet } from '@/components/favorites-sheet'
+import { useFavorites } from '@/lib/favorites-context'
+import { Badge } from '@/components/ui/badge'
 
 export function SiteHeader() {
     const router = useRouter()
@@ -16,6 +19,7 @@ export function SiteHeader() {
     const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [isUserLoading, setIsUserLoading] = useState(true)
+    const { favoriteCount } = useFavorites()
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -61,6 +65,16 @@ export function SiteHeader() {
                             </Button>
                         </Link>
                     )}
+                    <FavoritesSheet>
+                        <Button size="icon" variant="outline" className="relative">
+                            <Star className={`h-4 w-4 ${favoriteCount > 0 ? 'fill-primary text-primary' : ''}`} />
+                            {favoriteCount > 0 && (
+                                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-[10px]" variant="default">
+                                    {favoriteCount}
+                                </Badge>
+                            )}
+                        </Button>
+                    </FavoritesSheet>
                     <Link href="/cart">
                         <Button size="icon" variant="outline">
                             <ShoppingCart className="h-4 w-4" />

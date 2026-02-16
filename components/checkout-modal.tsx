@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator'
 import { completeCheckout } from '@/app/actions/orders'
 import { useToast } from '@/hooks/use-toast'
+import { formatCurrency } from '@/lib/utils'
 
 interface CheckoutModalProps {
   open: boolean
@@ -60,7 +61,7 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
 
       // Complete checkout and create order
       const result = await completeCheckout(email, cardNumber, expiry, cvv)
-      
+
       if (!result.ok) {
         toast({
           title: 'Error',
@@ -118,7 +119,7 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
               <DialogTitle>Complete Your Order</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 px-2 max-h-[60vh] overflow-y-auto" style={{
-                scrollbarWidth : "none"
+              scrollbarWidth: "none"
             }}>
               <div className="space-y-2 bg-secondary/50 rounded p-3 text-sm border border-secondary">
                 <p className="font-semibold text-foreground mb-3">You're about to purchase:</p>
@@ -128,25 +129,25 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
                       <p className="text-foreground">{item.name}</p>
                       <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
-                    <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))}
                 <div className="border-t border-secondary/50 pt-2 mt-2">
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>${totals.subtotal.toFixed(2)}</span>
+                    <span>{formatCurrency(totals.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-muted-foreground">Tax</span>
-                    <span>${totals.tax.toFixed(2)}</span>
+                    <span>{formatCurrency(totals.tax)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span>{totals.shipping === 0 ? 'FREE' : `$${totals.shipping.toFixed(2)}`}</span>
+                    <span>{totals.shipping === 0 ? 'FREE' : formatCurrency(totals.shipping)}</span>
                   </div>
                   <div className="flex justify-between font-semibold mt-2 text-primary">
                     <span>Total</span>
-                    <span>${totals.total.toFixed(2)}</span>
+                    <span>{formatCurrency(totals.total)}</span>
                   </div>
                 </div>
               </div>
@@ -164,42 +165,42 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
                   />
                 </div>
 
-              <Separator />
+                <Separator />
 
-              <div>
-                <label className="text-sm font-medium">Card Number</label>
-                <Input
-                  placeholder="1234 5678 9012 3456"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  className="mt-2"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-3 grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium">Expiry</label>
+                  <label className="text-sm font-medium">Card Number</label>
                   <Input
-                    placeholder="MM/YY"
-                    value={expiry}
-                    onChange={(e) => setExpiry(e.target.value)}
+                    placeholder="1234 5678 9012 3456"
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(e.target.value)}
                     className="mt-2"
                     required
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium">CVV</label>
-                  <Input
-                    placeholder="123"
-                    type="password"
-                    value={cvv}
-                    onChange={(e) => setCvv(e.target.value)}
-                    className="mt-2"
-                    required
-                  />
+
+                <div className="grid gap-3 grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Expiry</label>
+                    <Input
+                      placeholder="MM/YY"
+                      value={expiry}
+                      onChange={(e) => setExpiry(e.target.value)}
+                      className="mt-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">CVV</label>
+                    <Input
+                      placeholder="123"
+                      type="password"
+                      value={cvv}
+                      onChange={(e) => setCvv(e.target.value)}
+                      className="mt-2"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
                 <Button type="submit" disabled={isProcessing} className="w-full">
                   {isProcessing ? (
@@ -208,7 +209,7 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
                       Processing...
                     </>
                   ) : (
-                    `Pay $${totals.total.toFixed(2)} Now`
+                    `Pay ${formatCurrency(totals.total)} Now`
                   )}
                 </Button>
               </form>
@@ -228,8 +229,8 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
 
         {step === 'success' && (
           <div className="space-y-4 py-6 max-h-[90vh] overflow-y-auto px-3" style={{
-                scrollbarWidth : "none"
-            }}>
+            scrollbarWidth: "none"
+          }}>
             <div className="text-center">
               <CheckCircle className="mx-auto h-10 w-10 text-green-500 mb-3" />
               <p className="text-lg font-semibold text-foreground">Order Confirmed!</p>
@@ -248,7 +249,7 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
                   <span className="text-muted-foreground">
                     {item.name} x {item.quantity}
                   </span>
-                  <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
@@ -256,11 +257,11 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
             <div className="text-sm space-y-1 bg-secondary/50 rounded p-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">${totals.subtotal.toFixed(2)}</span>
+                <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tax</span>
-                <span className="font-medium">${totals.tax.toFixed(2)}</span>
+                <span className="font-medium">{formatCurrency(totals.tax)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping</span>
@@ -268,13 +269,13 @@ export function CheckoutModal({ open, onOpenChange, items, totals, onSuccess }: 
                   {totals.shipping === 0 ? (
                     <span className="text-primary">FREE</span>
                   ) : (
-                    `$${totals.shipping.toFixed(2)}`
+                    formatCurrency(totals.shipping)
                   )}
                 </span>
               </div>
               <div className="border-t border-secondary/50 pt-2 mt-2 flex justify-between font-semibold">
                 <span>Total Paid</span>
-                <span className="text-primary">${totals.total.toFixed(2)}</span>
+                <span className="text-primary">{formatCurrency(totals.total)}</span>
               </div>
             </div>
 
